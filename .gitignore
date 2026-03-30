@@ -7,3 +7,4 @@ uploads/
 vector_store/
 *.egg-info/
 .DS_Store
+.env
