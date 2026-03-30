@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings
 from typing import List
-import os
 
 
 class Settings(BaseSettings):
     # NVIDIA NIM API
-    NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "your-nvidia-api-key-here")
+    # Set NVIDIA_API_KEY in your local .env file (never commit the real key)
+    NVIDIA_API_KEY: str
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     NVIDIA_LLM_MODEL: str = "meta/llama-3.1-70b-instruct"
     NVIDIA_EMBEDDING_MODEL: str = "nvidia/nv-embedqa-e5-v5"
