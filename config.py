@@ -5,7 +5,7 @@ import os
 
 class Settings(BaseSettings):
     # NVIDIA NIM API
-    NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "your-nvidia-api-key-here")
+    NVIDIA_API_KEY: str                  # reads from .env automatically
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     NVIDIA_LLM_MODEL: str = "meta/llama-3.1-70b-instruct"
     NVIDIA_EMBEDDING_MODEL: str = "nvidia/nv-embedqa-e5-v5"
