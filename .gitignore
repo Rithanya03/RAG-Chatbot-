@@ -8,3 +8,4 @@ vector_store/
 *.egg-info/
 .DS_Store
 .envvector_store/
+.env
