@@ -10,29 +10,41 @@ from schemas import SourceDocument
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_BASE = """You are Labeeb, an intelligent business assistant with deep knowledge of procurement, inventory management, and enterprise operations. You help users understand business processes, reports, and workflows.
+SYSTEM_PROMPT_BASE = """You are Labeeb, a document-grounded business assistant.
 
 {style_instruction}
 
-INSTRUCTIONS:
-- Answer questions based ONLY on the provided context documents when context is available.
-- If the context does not contain enough information, say so clearly and offer general guidance.
-- Always be accurate, helpful, and structured in your responses.
-- When referencing information from documents, mention which document it came from.
-- For business processes, use clear numbered steps or bullet points when appropriate.
-- If asked something outside the context, rely on your general business knowledge but clearly indicate this.
+STRICT RULES — follow these without exception:
+1. Answer ONLY using information found in the CONTEXT DOCUMENTS below.
+2. Do NOT use any outside knowledge, general knowledge, or assumptions.
+3. If the context documents do not contain a clear answer, respond with exactly:
+   "I could not find relevant information in the uploaded documents to answer your question."
+4. Never speculate, infer beyond what is written, or fill gaps with general knowledge.
+5. Always cite which document/source your answer came from.
+6. If the question is completely unrelated to the documents (e.g. general trivia, coding, weather), respond with:
+   "This question is outside the scope of the uploaded documents. Please ask questions related to the available business documents."
 
 CONTEXT DOCUMENTS:
 {context}
 
 ---
-Answer the user's question based on the above context:"""
+Answer strictly from the context above:"""
 
-SYSTEM_PROMPT_NO_RAG = """You are Labeeb, an intelligent business assistant with deep knowledge of procurement, inventory management, and enterprise operations.
+# Used when use_rag=False is explicitly passed by the caller
+SYSTEM_PROMPT_NO_RAG = """You are Labeeb, a document-grounded business assistant.
 
 {style_instruction}
 
-Answer the user's question with your best knowledge about business processes, procurement, inventory management, and enterprise workflows."""
+No documents have been uploaded yet. Inform the user that they need to upload relevant business documents first before you can answer questions. Do not answer from general knowledge."""
+
+# Used when documents exist in the store but nothing was retrieved above the threshold
+SYSTEM_PROMPT_NO_MATCH = """You are Labeeb, a document-grounded business assistant.
+
+{style_instruction}
+
+The user asked a question but no relevant content was found in the uploaded documents.
+
+Respond with: "I could not find relevant information in the uploaded documents to answer your question. Please make sure you have uploaded the correct documents, or try rephrasing your question." """
 
 
 class RAGService:
@@ -84,16 +96,24 @@ class RAGService:
         user_message: str,
         context: str,
         style: str,
+        docs_exist: bool = False,
         conversation_history: Optional[List[dict]] = None,
     ) -> List[dict]:
         style_instruction = settings.CHAT_STYLES.get(style, settings.CHAT_STYLES["professional"])
 
         if context:
+            # We have retrieved relevant chunks — answer strictly from them
             system_content = SYSTEM_PROMPT_BASE.format(
                 style_instruction=style_instruction,
                 context=context,
             )
+        elif docs_exist:
+            # Documents are uploaded but nothing matched this query
+            system_content = SYSTEM_PROMPT_NO_MATCH.format(
+                style_instruction=style_instruction,
+            )
         else:
+            # No documents uploaded at all
             system_content = SYSTEM_PROMPT_NO_RAG.format(
                 style_instruction=style_instruction,
             )
@@ -127,10 +147,16 @@ class RAGService:
         conversation_history: Optional[List[dict]] = None,
     ) -> Tuple[str, List[SourceDocument], float]:
         sources, context = [], ""
-        if use_rag and vector_store.total_chunks > 0:
+        docs_exist = vector_store.total_chunks > 0
+
+        if use_rag and docs_exist:
             sources, context = await self.retrieve_context(user_message, document_ids)
 
-        messages = self._build_messages(user_message, context, style, conversation_history)
+        messages = self._build_messages(
+            user_message, context, style,
+            docs_exist=docs_exist,
+            conversation_history=conversation_history,
+        )
         response = await nvidia_client.chat_completion(messages)
         answer = response["choices"][0]["message"]["content"]
         confidence = self._calculate_confidence(sources, use_rag)
@@ -157,7 +183,9 @@ class RAGService:
         """
         try:
             sources, context = [], ""
-            if use_rag and vector_store.total_chunks > 0:
+            docs_exist = vector_store.total_chunks > 0
+
+            if use_rag and docs_exist:
                 sources, context = await self.retrieve_context(user_message, document_ids)
 
             # Send sources metadata immediately
@@ -169,7 +197,11 @@ class RAGService:
             }
             yield f"data: {json.dumps(sources_payload)}\n\n"
 
-            messages = self._build_messages(user_message, context, style, conversation_history)
+            messages = self._build_messages(
+                user_message, context, style,
+                docs_exist=docs_exist,
+                conversation_history=conversation_history,
+            )
 
             async for token in nvidia_client.chat_completion_stream(messages):
                 token_payload = {"type": "token", "content": token}
