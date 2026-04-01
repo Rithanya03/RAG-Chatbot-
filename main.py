@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import select
+import bcrypt
 import uvicorn
 
 from chat import router as chat_router
@@ -31,8 +33,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health_router, prefix="/api/v1", tags=["Health"])
-app.include_router(chat_router, prefix="/api/v1/chat", tags=["Chat"])
+app.include_router(health_router,    prefix="/api/v1",           tags=["Health"])
+app.include_router(chat_router,      prefix="/api/v1/chat",      tags=["Chat"])
 app.include_router(documents_router, prefix="/api/v1/documents", tags=["Documents"])
 
 

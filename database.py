@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
-from sqlalchemy import String, DateTime, Integer, Text, Float, Boolean
+from sqlalchemy import String, DateTime, Integer, Text, Float
 from datetime import datetime, timezone
 import uuid
 import os
@@ -24,7 +24,7 @@ class Document(Base):
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(50), default="processing")  # processing, ready, failed
+    status: Mapped[str] = mapped_column(String(50), default="processing")
     error_message: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -46,9 +46,9 @@ class ChatMessage(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)  # user / assistant
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    sources: Mapped[str] = mapped_column(Text, nullable=True)  # JSON list of source doc names
+    sources: Mapped[str] = mapped_column(Text, nullable=True)
     confidence: Mapped[float] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
